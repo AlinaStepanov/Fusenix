@@ -1,4 +1,4 @@
-const BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const BASE = import.meta.env.VITE_API_URL || "";  // empty = relative URLs, proxied by nginx in Docker / Vite dev server locally
 
 async function request(path, opts = {}) {
   const resp = await fetch(`${BASE}${path}`, {

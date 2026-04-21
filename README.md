@@ -37,8 +37,8 @@ It's also free to self-host and takes about 5 minutes to configure.
 ## Quick start
 
 ```bash
-git clone https://github.com/yourname/opsbridge
-cd opsbridge
+git clone https://github.com/AlinaStepanov/OpsBridge
+cd OpsBridge
 
 cp backend/.env.example backend/.env
 # edit backend/.env — add your AWS keys, GitHub token, Anthropic key

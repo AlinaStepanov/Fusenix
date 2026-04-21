@@ -1,0 +1,35 @@
+# FIX: removed deprecated "version:" field (ignored by Compose V2 anyway)
+
+services:
+  backend:
+    build: ./backend
+    # Not exposed to host — nginx talks to it on the internal Docker network
+    expose:
+      - "8000"
+    env_file:
+      # Copy .env.example -> .env and fill in your credentials
+      - .env
+    healthcheck:
+      # FIX: use Python instead of curl (curl may not exist in the slim image)
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      args:
+        # FIX: VITE_API_URL must be a BUILD ARG, not a runtime env var (Vite bakes it in at build time).
+        # Leave empty — the browser calls relative URLs which nginx proxies to backend.
+        # Set this only if you're running the backend on a different host/port.
+        VITE_API_URL: ""
+    ports:
+      - "3000:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
