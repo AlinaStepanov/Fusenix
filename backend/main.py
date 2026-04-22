@@ -8,9 +8,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import httpx
 
+from pathlib import Path
 try:
     from dotenv import load_dotenv
-    load_dotenv()
+    # Resolve .env from repo root (one level up from backend/)
+    _env_path = Path(__file__).resolve().parent.parent / ".env"
+    load_dotenv(_env_path)
 except ImportError:
     pass
 
@@ -27,7 +30,7 @@ app = FastAPI(title="OpsBridge API", version="1.1.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173"],
+    allow_origins=["http://localhost:5173", "http://localhost:3000", "http://localhost:3001", "http://127.0.0.1:5173", "http://127.0.0.1:3000", "http://127.0.0.1:3001"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -39,7 +39,7 @@ export function groupByDate(events) {
   const groups = {};
   for (const e of events) {
     const key = fmtDate(e.time);
-    if (\!groups[key]) groups[key] = [];
+    if (!groups[key]) groups[key] = [];
     groups[key].push(e);
   }
   return groups;

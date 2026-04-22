@@ -74,40 +74,69 @@ class CloudWatchConnector:
         TimelineEvent = _get_event_model()
         events = []
         try:
-            paginator = self._cw.get_paginator("describe_alarm_history")
-            kwargs = {
-                "HistoryItemType": "StateUpdate",
-                "StartDate": start,
-                "EndDate": end,
-                "ScanBy": "TimestampAscending",
-            }
+            # AlarmNamePrefix is only valid on describe_alarms, NOT describe_alarm_history.
+            # When a prefix is configured, first resolve matching alarm names, then fetch
+            # history per alarm. Without a prefix, fetch all history in one paginated call.
             if self.alarm_prefix:
-                kwargs["AlarmNamePrefix"] = self.alarm_prefix
+                alarm_names = self._resolve_alarm_names(self.alarm_prefix)
+                logger.debug("Resolved %d alarms for prefix %r", len(alarm_names), self.alarm_prefix)
+                items = []
+                for name in alarm_names:
+                    paginator = self._cw.get_paginator("describe_alarm_history")
+                    for page in paginator.paginate(
+                        AlarmName=name,
+                        HistoryItemType="StateUpdate",
+                        StartDate=start,
+                        EndDate=end,
+                        ScanBy="TimestampAscending",
+                    ):
+                        items.extend(page.get("AlarmHistoryItems", []))
+            else:
+                paginator = self._cw.get_paginator("describe_alarm_history")
+                items = []
+                for page in paginator.paginate(
+                    HistoryItemType="StateUpdate",
+                    StartDate=start,
+                    EndDate=end,
+                    ScanBy="TimestampAscending",
+                ):
+                    items.extend(page.get("AlarmHistoryItems", []))
 
-            for page in paginator.paginate(**kwargs):
-                for item in page.get("AlarmHistoryItems", []):
-                    sev    = self._alarm_severity(item)
-                    title  = self._alarm_title(item)
-                    detail = item.get("HistorySummary", "")
+            for item in items:
+                sev    = self._alarm_severity(item)
+                title  = self._alarm_title(item)
+                detail = item.get("HistorySummary", "")
 
-                    events.append(TimelineEvent(
-                        id=self._uid("cw_alarm", item["AlarmName"], str(item["Timestamp"])),
-                        source="cloudwatch",
-                        time=item["Timestamp"].isoformat(),
-                        severity=sev,
-                        title=title,
-                        detail=detail,
-                        tags=self._alarm_tags(item),
-                        url=(
-                            f"https://{self.region}.console.aws.amazon.com/cloudwatch/home"
-                            f"?region={self.region}#alarmsV2:alarm/{item['AlarmName']}"
-                        ),
-                        raw={"alarm_name": item["AlarmName"], "type": "alarm_history"},
-                    ))
+                events.append(TimelineEvent(
+                    id=self._uid("cw_alarm", item["AlarmName"], str(item["Timestamp"])),
+                    source="cloudwatch",
+                    time=item["Timestamp"].isoformat(),
+                    severity=sev,
+                    title=title,
+                    detail=detail,
+                    tags=self._alarm_tags(item),
+                    url=(
+                        f"https://{self.region}.console.aws.amazon.com/cloudwatch/home"
+                        f"?region={self.region}#alarmsV2:alarm/{item['AlarmName']}"
+                    ),
+                    raw={"alarm_name": item["AlarmName"], "type": "alarm_history"},
+                ))
         except Exception as e:
             logger.error("Failed to fetch CloudWatch alarms: %s", e)
             raise
         return events
+
+
+    def _resolve_alarm_names(self, prefix: str) -> list[str]:
+        """Return alarm names matching any of the comma-separated prefixes."""
+        names: list[str] = []
+        prefixes = [p.strip() for p in prefix.split(",") if p.strip()]
+        for pfx in prefixes:
+            paginator = self._cw.get_paginator("describe_alarms")
+            for page in paginator.paginate(AlarmNamePrefix=pfx, AlarmTypes=["MetricAlarm", "CompositeAlarm"]):
+                names.extend(a["AlarmName"] for a in page.get("MetricAlarms", []))
+                names.extend(a["AlarmName"] for a in page.get("CompositeAlarms", []))
+        return names
 
     def _alarm_severity(self, item: dict) -> str:
         summary = item.get("HistorySummary", "").lower()

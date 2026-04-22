@@ -31,39 +31,25 @@ export default function App() {
   const { sources, loading: sourcesLoading } = useSourceStatus();
   const { analysis, loading: analysisLoading, error: analysisError, run: runAnalysis, clear: clearAnalysis } = useAnalysis();
 
-  const [selectedEvent, setSelectedEvent] = useState(null);
-  const [showAnalysis,  setShowAnalysis]  = useState(false);
-  const [activeSources, setActiveSources] = useState(["cloudwatch", "github"]);
-  const [activePreset,  setActivePreset]  = useState("4h");
-  const [timeRange,     setTimeRange]     = useState(() => makeRange(4 * 60 * 60 * 1000));
-  const [bannerError,   setBannerError]   = useState(null);
+  const [selectedEvent,  setSelectedEvent]  = useState(null);
+  const [showAnalysis,   setShowAnalysis]   = useState(false);
+  const [activeSources,  setActiveSources]  = useState(["cloudwatch", "github"]);
+  const [activePreset,   setActivePreset]   = useState("4h");
+  const [timeRange,      setTimeRange]      = useState(() => makeRange(4 * 60 * 60 * 1000));
+  const [bannerError,    setBannerError]    = useState(null);
 
-  // Dismiss banner when a new load starts
+  // Dismiss banner when new load starts
   useEffect(() => { setBannerError(null); }, [timeRange, activeSources]);
 
   // Load events whenever time range or sources change
   useEffect(() => {
     load(timeRange.start, timeRange.end, activeSources);
-  }, [timeRange, activeSources]); // eslint-disable-line
+  }, [timeRange, activeSources]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Surface load errors to the banner
   useEffect(() => {
     if (error) setBannerError(error);
   }, [error]);
-
-  // Derived state — compute BEFORE callbacks that use it
-  const visibleEvents = useMemo(
-    () => events.filter(e => activeSources.includes(e.source)),
-    [events, activeSources]
-  );
-
-  const stats = useMemo(() => {
-    const c = { critical: 0, warning: 0, info: 0, success: 0 };
-    for (const e of visibleEvents) c[e.severity] = (c[e.severity] || 0) + 1;
-    return c;
-  }, [visibleEvents]);
-
-  // ── Handlers ─────────────────────────────────────────────────────────────
 
   const handlePreset = useCallback((preset) => {
     setActivePreset(preset.label);
@@ -71,13 +57,13 @@ export default function App() {
   }, []);
 
   const handleCustomStart = useCallback((val) => {
-    if (\!val) return;
+    if (!val) return;
     setActivePreset(null);
     setTimeRange(r => ({ ...r, start: new Date(val).toISOString() }));
   }, []);
 
   const handleCustomEnd = useCallback((val) => {
-    if (\!val) return;
+    if (!val) return;
     setActivePreset(null);
     setTimeRange(r => ({ ...r, end: new Date(val).toISOString() }));
   }, []);
@@ -85,7 +71,7 @@ export default function App() {
   const handleSourceToggle = useCallback((source) => {
     setActiveSources(prev =>
       prev.includes(source)
-        ? prev.filter(s => s \!== source)
+        ? prev.filter(s => s !== source)
         : [...prev, source]
     );
   }, []);
@@ -94,21 +80,30 @@ export default function App() {
     setShowAnalysis(true);
     setSelectedEvent(null);
     runAnalysis(visibleEvents);
-  }, [visibleEvents, runAnalysis]);
+  }, [events, activeSources]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleExport = useCallback(() => {
     const blob = new Blob([JSON.stringify(visibleEvents, null, 2)], { type: "application/json" });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement("a");
     a.href     = url;
-    a.download = `opsbridge-${new Date().toISOString().slice(0, 16)}.json`;
+    a.download = `opsbridge-${new Date().toISOString().slice(0,16)}.json`;
     a.click();
     URL.revokeObjectURL(url);
-  }, [visibleEvents]);
+  }, [events, activeSources]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleRefresh = useCallback(() => {
-    load(timeRange.start, timeRange.end, activeSources);
-  }, [load, timeRange, activeSources]);
+  // Apply source filter for display
+  const visibleEvents = useMemo(
+    () => events.filter(e => activeSources.includes(e.source)),
+    [events, activeSources]
+  );
+
+  // Stats for the header strip
+  const stats = useMemo(() => {
+    const c = { critical: 0, warning: 0, info: 0, success: 0 };
+    for (const e of visibleEvents) c[e.severity] = (c[e.severity] || 0) + 1;
+    return c;
+  }, [visibleEvents]);
 
   const hasPanel = selectedEvent || showAnalysis;
 
@@ -157,6 +152,7 @@ export default function App() {
           ))}
         </div>
 
+        {/* Separator */}
         <span style={{ color: "var(--border-hi)", fontSize: 13 }}>|</span>
 
         {/* Custom datetime range */}
@@ -176,23 +172,26 @@ export default function App() {
           />
         </div>
 
+        {/* Spacer */}
         <div style={{ flex: 1 }} />
 
         {/* Stats strip */}
         {visibleEvents.length > 0 && (
-          <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
-            <StatPill label="total" value={visibleEvents.length} color="var(--text-dim)" />
-            {stats.critical > 0 && <StatPill label="crit" value={stats.critical} color="var(--red)"    />}
-            {stats.warning  > 0 && <StatPill label="warn" value={stats.warning}  color="var(--yellow)" />}
-            {stats.info     > 0 && <StatPill label="info" value={stats.info}     color="var(--blue)"   />}
-            {stats.success  > 0 && <StatPill label="ok"   value={stats.success}  color="var(--green)"  />}
+          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+            <StatPill label="total"    value={visibleEvents.length} color="var(--text-dim)" />
+            {stats.critical > 0 && <StatPill label="crit"  value={stats.critical} color="var(--red)"    />}
+            {stats.warning  > 0 && <StatPill label="warn"  value={stats.warning}  color="var(--yellow)" />}
+            {stats.info     > 0 && <StatPill label="info"  value={stats.info}     color="var(--blue)"   />}
+            {stats.success  > 0 && <StatPill label="ok"    value={stats.success}  color="var(--green)"  />}
           </div>
         )}
 
+        {/* Separator */}
         <span style={{ color: "var(--border-hi)", fontSize: 13 }}>|</span>
 
         {/* Action buttons */}
         <div style={{ display: "flex", gap: 6 }}>
+          {/* AI Analysis */}
           <button
             onClick={handleAnalyze}
             disabled={visibleEvents.length === 0 || analysisLoading}
@@ -209,23 +208,28 @@ export default function App() {
             {analysisLoading ? "Analyzing…" : "AI Analysis"}
           </button>
 
+          {/* Export */}
           <button
             onClick={handleExport}
             disabled={visibleEvents.length === 0}
             title="Export visible events as JSON"
-            style={{ ...btnStyle, opacity: visibleEvents.length === 0 ? 0.4 : 1 }}
+            style={{
+              ...btnStyle,
+              opacity: visibleEvents.length === 0 ? 0.4 : 1,
+            }}
           >
             ↓ Export
           </button>
 
+          {/* Refresh */}
           <button
-            onClick={handleRefresh}
+            onClick={() => load(timeRange.start, timeRange.end, activeSources)}
             disabled={loading}
             title="Refresh timeline"
             style={btnStyle}
           >
             {loading ? <Spinner size={11} color="var(--muted)" /> : "↺"}
-            {\!loading && " Refresh"}
+            {!loading && " Refresh"}
           </button>
         </div>
       </header>
@@ -245,21 +249,24 @@ export default function App() {
           <ErrorBanner
             error={bannerError}
             onDismiss={() => setBannerError(null)}
-            onRetry={handleRefresh}
+            onRetry={() => load(timeRange.start, timeRange.end, activeSources)}
           />
         </div>
       )}
 
-      {/* ── Main content ── */}
+      {/* ── Main content area ── */}
       <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+
         {/* Timeline */}
         <section style={{
-          flex: 1, overflowY: "auto", minWidth: 0,
+          flex: 1,
+          overflowY: "auto",
           borderRight: hasPanel ? "1px solid var(--border)" : "none",
+          minWidth: 0,
         }}>
           {loading && visibleEvents.length === 0 ? (
             <EmptyState loading />
-          ) : \!loading && visibleEvents.length === 0 && \!error ? (
+          ) : !loading && visibleEvents.length === 0 && !error ? (
             <EmptyState />
           ) : (
             <div>
@@ -281,7 +288,7 @@ export default function App() {
         </section>
 
         {/* Event detail panel */}
-        {selectedEvent && \!showAnalysis && (
+        {selectedEvent && !showAnalysis && (
           <aside style={{ width: 420, flexShrink: 0, overflowY: "auto" }}>
             <EventDetail
               event={selectedEvent}
@@ -311,9 +318,14 @@ export default function App() {
 // ── Shared styles ─────────────────────────────────────────────────────────────
 
 const inputStyle = {
-  background: "var(--bg)", border: "1px solid var(--border-hi)", borderRadius: 5,
-  padding: "4px 8px", color: "var(--text-dim)", fontSize: 11,
-  fontFamily: "var(--font-mono)", outline: "none",
+  background: "var(--bg)",
+  border: "1px solid var(--border-hi)",
+  borderRadius: 5,
+  padding: "4px 8px",
+  color: "var(--text-dim)",
+  fontSize: 11,
+  fontFamily: "var(--font-mono)",
+  outline: "none",
 };
 
 const btnStyle = {
@@ -322,10 +334,11 @@ const btnStyle = {
   background: "transparent", border: "1px solid var(--border-hi)",
   color: "var(--muted)", fontSize: 11,
   fontFamily: "var(--font-mono)", fontWeight: 600,
-  cursor: "pointer", transition: "all 0.12s", whiteSpace: "nowrap",
+  cursor: "pointer", transition: "all 0.12s",
+  whiteSpace: "nowrap",
 };
 
-// ── Shared sub-components ─────────────────────────────────────────────────────
+// ── Helper components ─────────────────────────────────────────────────────────
 
 function StatPill({ label, value, color }) {
   return (
@@ -349,7 +362,7 @@ function EmptyState({ loading }) {
           <div style={{ fontSize: 36, marginBottom: 14, opacity: 0.3 }}>◎</div>
           <p style={{ color: "var(--muted)", fontSize: 14 }}>No events found</p>
           <p style={{ color: "var(--border-hi)", fontSize: 12, marginTop: 6 }}>
-            Try expanding the time range or check source configuration.
+            Try expanding the time range or check your source configuration.
           </p>
         </>
       )}
@@ -357,46 +370,58 @@ function EmptyState({ loading }) {
   );
 }
 
-// ── AI Analysis side panel ────────────────────────────────────────────────────
+// ── AI Analysis panel ─────────────────────────────────────────────────────────
 
 function AnalysisPanel({ analysis, loading, error, eventCount, onClose, onRetry }) {
   const a = analysis?.analysis;
 
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+      {/* Header */}
       <div style={{
-        padding: "13px 18px", borderBottom: "1px solid var(--border)",
-        display: "flex", alignItems: "center", gap: 8, flexShrink: 0,
+        padding: "13px 18px",
+        borderBottom: "1px solid var(--border)",
+        display: "flex", alignItems: "center", gap: 8,
+        flexShrink: 0,
       }}>
         <span style={{ color: "var(--green)", fontSize: 13 }}>◈</span>
         <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, fontWeight: 600 }}>
           AI Root-Cause Analysis
         </span>
-        {\!loading && \!error && a && (
-          <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--muted)" }}>
+        {!loading && !error && a && (
+          <span style={{
+            fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--muted)",
+            marginLeft: 4,
+          }}>
             ({eventCount} events)
           </span>
         )}
         <button
           onClick={onClose}
           style={{ marginLeft: "auto", background: "none", border: "none", color: "var(--muted)", fontSize: 18, cursor: "pointer", lineHeight: 1 }}
+          onMouseEnter={e => e.target.style.color = "var(--text)"}
+          onMouseLeave={e => e.target.style.color = "var(--muted)"}
         >
           ×
         </button>
       </div>
 
+      {/* Body */}
       <div style={{ flex: 1, overflowY: "auto", padding: "20px 18px 32px" }}>
+
         {loading && (
           <div style={{ textAlign: "center", paddingTop: 60 }}>
             <Spinner size={28} />
-            <p style={{ color: "var(--muted)", marginTop: 20, fontSize: 13 }}>Analyzing {eventCount} events…</p>
+            <p style={{ color: "var(--muted)", marginTop: 20, fontSize: 13 }}>
+              Analyzing {eventCount} events…
+            </p>
             <p style={{ color: "var(--border-hi)", fontSize: 11, marginTop: 6, fontFamily: "var(--font-mono)" }}>
               Claude is reading the incident timeline
             </p>
           </div>
         )}
 
-        {error && \!loading && (
+        {error && !loading && (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <ErrorBanner error={error} />
             <button onClick={onRetry} style={{ ...btnStyle, alignSelf: "flex-start" }}>
@@ -405,12 +430,16 @@ function AnalysisPanel({ analysis, loading, error, eventCount, onClose, onRetry 
           </div>
         )}
 
-        {a && \!loading && (
+        {a && !loading && (
           <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-            {/* Risk score gauge */}
+
+            {/* Risk score */}
             <div style={{
-              display: "flex", alignItems: "center", gap: 14, padding: "14px 16px",
-              background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 8,
+              display: "flex", alignItems: "center", gap: 14,
+              padding: "14px 16px",
+              background: "var(--bg)",
+              border: "1px solid var(--border)",
+              borderRadius: 8,
             }}>
               <div>
                 <div style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--muted)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>
@@ -424,7 +453,9 @@ function AnalysisPanel({ analysis, loading, error, eventCount, onClose, onRetry 
                   <span style={{ fontSize: 14, color: "var(--muted)", fontWeight: 400 }}>/10</span>
                 </div>
               </div>
-              <div style={{ flex: 1, height: 6, background: "var(--border)", borderRadius: 3, overflow: "hidden" }}>
+              <div style={{
+                flex: 1, height: 6, background: "var(--border)", borderRadius: 3, overflow: "hidden",
+              }}>
                 <div style={{
                   height: "100%", borderRadius: 3,
                   width: `${(a.risk_score / 10) * 100}%`,
@@ -434,9 +465,9 @@ function AnalysisPanel({ analysis, loading, error, eventCount, onClose, onRetry 
               </div>
             </div>
 
-            <ASection title="Root Cause"       content={a.root_cause}       accent="var(--red)"    />
-            <ASection title="Key Insight"      content={a.key_insight}      accent="var(--blue)"   />
-            <ASection title="Timeline Summary" content={a.timeline_summary} accent="var(--purple)" />
+            <ASection title="Root Cause"       content={a.root_cause}        accent="var(--red)"    />
+            <ASection title="Key Insight"      content={a.key_insight}       accent="var(--blue)"   />
+            <ASection title="Timeline Summary" content={a.timeline_summary}  accent="var(--purple)" />
 
             {a.contributing_factors?.length > 0 && (
               <div>
@@ -444,7 +475,7 @@ function AnalysisPanel({ analysis, loading, error, eventCount, onClose, onRetry 
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   {a.contributing_factors.map((f, i) => (
                     <div key={i} style={{ display: "flex", gap: 8 }}>
-                      <span style={{ color: "var(--yellow)", flexShrink: 0, fontSize: 11, paddingTop: 2 }}>▸</span>
+                      <span style={{ fontFamily: "var(--font-mono)", color: "var(--yellow)", flexShrink: 0, fontSize: 11, paddingTop: 2 }}>▸</span>
                       <span style={{ color: "var(--text-dim)", fontSize: 13, lineHeight: 1.55 }}>{f}</span>
                     </div>
                   ))}
@@ -490,18 +521,16 @@ function ALabel({ children }) {
 }
 
 function ASection({ title, content, accent }) {
-  if (\!content) return null;
+  if (!content) return null;
   return (
     <div>
       <ALabel>{title}</ALabel>
       <div style={{
         padding: "11px 14px",
         background: "var(--bg)",
-        borderLeft: `3px solid ${accent}`,
-        border: "1px solid var(--border)",
-        borderLeftWidth: 3,
-        borderLeftColor: accent,
         borderRadius: "0 6px 6px 0",
+        border: "1px solid var(--border)",
+        borderLeft: `3px solid ${accent}`,
         fontSize: 13, lineHeight: 1.65, color: "var(--text)",
       }}>
         {content}

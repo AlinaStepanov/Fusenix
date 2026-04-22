@@ -39,8 +39,8 @@ export function SourceFilter({ events = [], activeSources = [], onToggle, source
         const count       = countBySource[key] ?? 0;
         const sourceInfo  = sources[key];
         // A source is "enabled" if the backend says it's configured, or if we have no info yet
-        const configured  = sourceInfo ? sourceInfo.configured \!== false : null;
-        const isAvailable = configured \!== false;
+        const configured  = sourceInfo ? sourceInfo.configured !== false : null;
+        const isAvailable = configured !== false;
 
         return (
           <button

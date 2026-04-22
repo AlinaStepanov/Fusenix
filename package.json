@@ -4,9 +4,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "concurrently --kill-others --names \"api,ui\" --prefix-colors \"cyan,magenta\" \"npm run dev:api\" \"npm run dev:ui\"",
+    "dev:ui": "vite",
+    "dev:api": "([ -d backend/.venv ] || python3 -m venv backend/.venv) && backend/.venv/bin/pip install -q -r backend/requirements.txt && cd backend && .venv/bin/python -m uvicorn main:app --reload --port 8000",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "install:api": "([ -d backend/.venv ] || python3 -m venv backend/.venv) && backend/.venv/bin/pip install -r backend/requirements.txt"
   },
   "dependencies": {
     "react": "^18.3.1",
@@ -17,6 +20,7 @@
     "@types/react": "^18.3.1",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.1",
+    "concurrently": "^9.2.1",
     "vite": "^5.4.0"
   }
 }

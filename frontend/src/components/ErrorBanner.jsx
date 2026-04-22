@@ -4,7 +4,7 @@
  */
 export function ErrorBanner({ message, error, onDismiss, onRetry }) {
   const text = message || error;
-  if (\!text) return null;
+  if (!text) return null;
 
   const handleDismiss = onDismiss || onRetry;
 
@@ -37,7 +37,7 @@ export function ErrorBanner({ message, error, onDismiss, onRetry }) {
           Retry
         </button>
       )}
-      {handleDismiss && \!onRetry && (
+      {handleDismiss && !onRetry && (
         <button
           onClick={handleDismiss}
           style={{ background: "none", border: "none", color: "var(--red)", fontSize: 16, cursor: "pointer", lineHeight: 1, flexShrink: 0 }}

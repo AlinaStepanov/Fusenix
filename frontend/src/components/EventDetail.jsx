@@ -8,7 +8,7 @@ import { fmtDatetime } from "../utils.js";
  * Previously onClose was passed by App.jsx but never used here.
  */
 export function EventDetail({ event, onClose }) {
-  if (\!event) return null;
+  if (!event) return null;
   const m = SOURCE_META[event.source] ?? { color: "#4a5568" };
 
   return (
