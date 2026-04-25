@@ -32,10 +32,13 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
-logger = logging.getLogger("Fusenix")
+logger = logging.getLogger("fusenix")
 
 from connectors.cloudwatch import CloudWatchConnector
 from connectors.github import GitHubConnector
+from connectors.grafana import GrafanaConnector
+from connectors.pagerduty import PagerDutyConnector
+from connectors.datadog import DatadogConnector
 
 # ── Rate limiting ─────────────────────────────────────────────────────────────
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -348,6 +351,24 @@ def get_github():
         repos=os.environ.get("GITHUB_REPOS", "").split(","),
     )
 
+def get_grafana():
+    url = os.environ.get("GRAFANA_URL", "")
+    key = os.environ.get("GRAFANA_API_KEY", "")
+    org  = os.environ.get("GRAFANA_ORG_ID") or None
+    return GrafanaConnector(url=url, api_key=key, org_id=org)
+
+def get_pagerduty():
+    key      = os.environ.get("PAGERDUTY_API_KEY", "")
+    svc_ids  = [s.strip() for s in os.environ.get("PAGERDUTY_SERVICE_IDS", "").split(",") if s.strip()]
+    return PagerDutyConnector(api_key=key, service_ids=svc_ids or None)
+
+def get_datadog():
+    api_key = os.environ.get("DD_API_KEY", "")
+    app_key = os.environ.get("DD_APP_KEY", "")
+    site    = os.environ.get("DD_SITE", "datadoghq.com")
+    return DatadogConnector(api_key=api_key, app_key=app_key, site=site)
+
+
 
 # ════════════════════════════════════════════════════════════════════════════
 # Pydantic models
@@ -404,7 +425,7 @@ async def get_timeline(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=f"Invalid time format: {e}")
 
-    requested = set((sources or "cloudwatch,github").split(","))
+    requested = set((sources or "cloudwatch,github,grafana,pagerduty,datadog").split(","))
     logger.info("Timeline request: %s -> %s, sources=%s", start, end, requested)
 
     tasks = {}
@@ -412,6 +433,12 @@ async def get_timeline(
         tasks["cloudwatch"] = get_cloudwatch().fetch(start_dt, end_dt)
     if "github" in requested:
         tasks["github"] = get_github().fetch(start_dt, end_dt)
+    if "grafana" in requested and os.environ.get("GRAFANA_URL") and os.environ.get("GRAFANA_API_KEY"):
+        tasks["grafana"] = get_grafana().fetch(start_dt, end_dt)
+    if "pagerduty" in requested and os.environ.get("PAGERDUTY_API_KEY"):
+        tasks["pagerduty"] = get_pagerduty().fetch(start_dt, end_dt)
+    if "datadog" in requested and os.environ.get("DD_API_KEY") and os.environ.get("DD_APP_KEY"):
+        tasks["datadog"] = get_datadog().fetch(start_dt, end_dt)
 
     results = await asyncio.gather(*tasks.values(), return_exceptions=True)
 
@@ -509,6 +536,18 @@ async def sources_status():
             "configured": bool(os.environ.get("GITHUB_TOKEN")),
             "repos": [r for r in os.environ.get("GITHUB_REPOS", "").split(",") if r],
         },
+        "grafana": {
+            "configured": bool(os.environ.get("GRAFANA_URL") and os.environ.get("GRAFANA_API_KEY")),
+            "url": os.environ.get("GRAFANA_URL", ""),
+        },
+        "pagerduty": {
+            "configured": bool(os.environ.get("PAGERDUTY_API_KEY")),
+            "service_ids": [s for s in os.environ.get("PAGERDUTY_SERVICE_IDS", "").split(",") if s],
+        },
+        "datadog": {
+            "configured": bool(os.environ.get("DD_API_KEY") and os.environ.get("DD_APP_KEY")),
+            "site": os.environ.get("DD_SITE", "datadoghq.com"),
+        },
         "ai": {
             "provider": provider_name,
             "configured": key_configured,
@@ -523,6 +562,85 @@ async def sources_status():
         },
     }
 
+
+
+
+@app.get("/audit")
+@limiter.limit("10/minute")
+async def audit_all_sources(request: Request):
+    """
+    Multi-source configuration audit.
+    Checks every configured integration for misconfigurations and returns
+    a unified report grouped by source.
+    """
+    tasks = {}
+
+    # CloudWatch is always attempted if credentials exist
+    tasks["cloudwatch"] = get_cloudwatch().audit_alarms()
+
+    if os.environ.get("GRAFANA_URL") and os.environ.get("GRAFANA_API_KEY"):
+        tasks["grafana"] = get_grafana().audit()
+
+    if os.environ.get("PAGERDUTY_API_KEY"):
+        tasks["pagerduty"] = get_pagerduty().audit()
+
+    if os.environ.get("DD_API_KEY") and os.environ.get("DD_APP_KEY"):
+        tasks["datadog"] = get_datadog().audit()
+
+    results = await asyncio.gather(*tasks.values(), return_exceptions=True)
+
+    sources_out: dict = {}
+    grand = {"total": 0, "ok": 0, "warning": 0, "critical": 0, "info": 0}
+
+    for source, result in zip(tasks.keys(), results):
+        if isinstance(result, Exception):
+            logger.error("Audit for %s failed: %s", source, result)
+            sources_out[source] = {
+                "configured": True,
+                "error": str(result),
+                "items": [],
+                "summary": {"total": 0, "ok": 0, "warning": 0, "critical": 0, "info": 0},
+            }
+        else:
+            # CloudWatch audit_alarms() returns a plain list of alarm dicts —
+            # compute summary here, same as the /audit/alarms route does.
+            if source == "cloudwatch":
+                alarms = result  # result IS the list
+                cw_summary = {
+                    "total":    len(alarms),
+                    "ok":       sum(1 for a in alarms if a.get("health") == "ok"),
+                    "warning":  sum(1 for a in alarms if a.get("health") == "warning"),
+                    "critical": sum(1 for a in alarms if a.get("health") == "critical"),
+                    "info":     sum(1 for a in alarms if a.get("health") == "info"),
+                }
+                items = [
+                    {
+                        "name":         a.get("name", ""),
+                        "health":       a.get("health", "ok"),
+                        "issues_count": a.get("issues_count", 0),
+                        "issues":       a.get("issues", []),
+                        "state":        a.get("state", ""),
+                        "url":          a.get("url"),
+                        "_alarm":       a,   # full alarm kept for AlarmCard renderer
+                    }
+                    for a in alarms
+                ]
+                sources_out[source] = {
+                    "configured": True,
+                    "items": items,
+                    "summary": cw_summary,
+                }
+            else:
+                sources_out[source] = result
+
+            s = sources_out[source].get("summary", {})
+            for k in ("total", "ok", "warning", "critical", "info"):
+                grand[k] = grand.get(k, 0) + s.get(k, 0)
+
+    return {
+        "sources": sources_out,
+        "summary": grand,
+    }
 
 @app.get("/audit/alarms")
 @limiter.limit("10/minute")
