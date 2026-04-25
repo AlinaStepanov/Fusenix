@@ -1,5 +1,5 @@
 """
-main.py — OpsBridge API (provider-agnostic AI backend)
+main.py — Fusenix API (provider-agnostic AI backend)
 
 AI provider is selected via AI_PROVIDER in .env (repo root).
 Supported: openrouter | openai | anthropic | ollama | azure_openai
@@ -32,7 +32,7 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
-logger = logging.getLogger("opsbridge")
+logger = logging.getLogger("Fusenix")
 
 from connectors.cloudwatch import CloudWatchConnector
 from connectors.github import GitHubConnector
@@ -44,7 +44,7 @@ from slowapi.errors import RateLimitExceeded
 
 limiter = Limiter(key_func=get_remote_address, default_limits=["60/minute"])
 
-app = FastAPI(title="OpsBridge API", version="2.0.0")
+app = FastAPI(title="Fusenix API", version="2.0.0")
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 

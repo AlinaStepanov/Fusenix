@@ -123,7 +123,7 @@ export default function App() {
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement("a");
     a.href     = url;
-    a.download = `opsbridge-${new Date().toISOString().slice(0,16)}.json`;
+    a.download = `Fusenix-${new Date().toISOString().slice(0,16)}.json`;
     a.click();
     URL.revokeObjectURL(url);
   }, [events, activeSources]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -162,7 +162,7 @@ export default function App() {
         {/* Logo */}
         <div style={{ marginRight: 8 }}>
           <div style={{ fontSize: 17, fontWeight: 700, letterSpacing: -0.5, lineHeight: 1, color: "var(--text)" }}>
-            OpsBridge
+            Fusenix
           </div>
           <div style={{ fontSize: 10, color: "var(--muted)", fontFamily: "var(--font-mono)", marginTop: 2 }}>
             incident context aggregator

@@ -18,7 +18,7 @@ from typing import Optional
 import boto3
 from botocore.config import Config
 
-logger = logging.getLogger("opsbridge.cloudwatch")
+logger = logging.getLogger("fusenix.cloudwatch")
 
 
 def _get_event_model():

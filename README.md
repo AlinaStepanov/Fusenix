@@ -1,8 +1,8 @@
-# OpsBridge
+# Fusenix
 
 **One screen for incident investigation.**
 
-When something breaks in production, the context is scattered: alarms firing in CloudWatch, a suspicious deploy in GitHub, CI going red, metrics spiking. OpsBridge pulls all of it into a single chronological timeline so you can see *what happened in what order* — without switching between six tabs.
+When something breaks in production, the context is scattered: alarms firing in CloudWatch, a suspicious deploy in GitHub, CI going red, metrics spiking. Fusenix pulls all of it into a single chronological timeline so you can see *what happened in what order* — without switching between six tabs.
 
 ```
 14:23  ◉ github      Deploy → production: v2.4.1 [SUCCESS]
@@ -28,7 +28,7 @@ Hit **AI Analysis** and the configured AI reads the timeline and tells you the l
 
 ## Why not just use [Datadog / Grafana / PagerDuty]?
 
-Those tools are great but they each show their own slice. Datadog doesn't know about your GitHub deploys. PagerDuty doesn't show your log errors. Grafana doesn't know a revert commit just landed. OpsBridge is **read-only and source-agnostic** — it doesn't replace your existing stack, it just aggregates the timeline across all of it.
+Those tools are great but they each show their own slice. Datadog doesn't know about your GitHub deploys. PagerDuty doesn't show your log errors. Grafana doesn't know a revert commit just landed. Fusenix is **read-only and source-agnostic** — it doesn't replace your existing stack, it just aggregates the timeline across all of it.
 
 It's also free to self-host and takes about 5 minutes to configure.
 
@@ -37,8 +37,8 @@ It's also free to self-host and takes about 5 minutes to configure.
 ## Quick start
 
 ```bash
-git clone https://github.com/AlinaStepanov/OpsBridge
-cd OpsBridge
+git clone https://github.com/AlinaStepanov/Fusenix
+cd Fusenix
 
 cp .env.example .env
 # edit .env — fill in your AWS keys, GitHub token, and AI provider credentials
@@ -81,7 +81,7 @@ GITHUB_TOKEN=ghp_...
 GITHUB_REPOS=myorg/api,myorg/frontend
 
 # CORS (defaults to localhost dev origins if unset)
-ALLOWED_ORIGINS=https://opsbridge.example.com
+ALLOWED_ORIGINS=https://fusenix.example.com
 ```
 
 You only need credentials for the sources you actually use — everything else is gracefully skipped. The UI shows a green dot next to each configured source.
