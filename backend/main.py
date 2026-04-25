@@ -1,7 +1,7 @@
 """
-main1.py — OpsBridge API (provider-agnostic AI backend)
+main.py — OpsBridge API (provider-agnostic AI backend)
 
-AI provider is selected via AI_PROVIDER in .env.pro (repo root).
+AI provider is selected via AI_PROVIDER in .env (repo root).
 Supported: openrouter | openai | anthropic | ollama | azure_openai
 """
 
@@ -23,10 +23,8 @@ from pathlib import Path
 try:
     from dotenv import load_dotenv
     _root = Path(__file__).resolve().parent.parent
-    # Load .env first (infrastructure / data-source creds), then .env.pro
-    # (AI provider config) so .env.pro values take precedence where they overlap.
+    # Loads .env from repo root (one level up from backend/)
     load_dotenv(_root / ".env")
-    load_dotenv(_root / ".env.pro", override=True)
 except ImportError:
     pass
 
@@ -236,7 +234,7 @@ class AzureOpenAIProvider(AIProvider):
 def get_ai_provider() -> AIProvider:
     """
     Build and return the configured AI provider.
-    Selection is driven by AI_PROVIDER in .env.pro (defaults to 'openrouter').
+    Selection is driven by AI_PROVIDER in .env (defaults to 'openrouter').
     """
     provider = os.environ.get("AI_PROVIDER", "openrouter").strip().lower()
     logger.debug("AI_PROVIDER=%s", provider)
