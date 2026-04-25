@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "concurrently --kill-others --names \"api,ui\" --prefix-colors \"cyan,magenta\" \"npm run dev:api\" \"npm run dev:ui\"",
     "dev:ui": "vite",
-    "dev:api": "([ -d backend/.venv ] || python3 -m venv backend/.venv) && backend/.venv/bin/pip install -q -r backend/requirements.txt && cd backend && .venv/bin/python -m uvicorn main:app --reload --port 8000",
+    "dev:api": "([ -d backend/.venv ] || python3 -m venv backend/.venv) && backend/.venv/bin/pip install -q -r backend/requirements.txt && cd backend && .venv/bin/python -m uvicorn main:app --reload --port 8003",
     "build": "vite build",
     "preview": "vite preview",
     "install:api": "([ -d backend/.venv ] || python3 -m venv backend/.venv) && backend/.venv/bin/pip install -r backend/requirements.txt"

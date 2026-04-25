@@ -67,7 +67,7 @@ export function EventDetail({ event, onClose }) {
         {event.detail && (
           <div style={{
             padding: "11px 14px",
-            background: "var(--border)",
+            background: "var(--bg)",
             borderLeft: `3px solid ${m.color}`,
             borderRadius: "0 6px 6px 0",
             fontFamily: "var(--font-mono)",
@@ -88,7 +88,7 @@ export function EventDetail({ event, onClose }) {
               <span key={t} style={{
                 padding: "2px 8px", borderRadius: 4,
                 fontSize: 11, fontFamily: "var(--font-mono)",
-                background: "var(--border-hi)", color: "var(--text)",
+                background: "var(--border)", color: "var(--text-dim)",
               }}>
                 #{t}
               </span>

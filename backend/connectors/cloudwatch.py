@@ -330,3 +330,210 @@ class CloudWatchConnector:
     @staticmethod
     def _uid(*parts: str) -> str:
         return "cw_" + hashlib.md5("|".join(parts).encode()).hexdigest()[:12]
+
+    # ── alarm audit ──────────────────────────────────────────────────────────
+
+    async def audit_alarms(self) -> list[dict]:
+        """
+        Return full configuration for all alarms matching the configured prefix,
+        plus a list of flagged issues for each alarm.
+        """
+        return await asyncio.to_thread(self._describe_alarms_config)
+
+    def _describe_alarms_config(self) -> list[dict]:
+        audited: list[dict] = []
+
+        try:
+            paginator = self._cw.get_paginator("describe_alarms")
+            page_kwargs: dict = {"AlarmTypes": ["MetricAlarm", "CompositeAlarm"]}
+            if self.alarm_prefix:
+                # Support comma-separated prefixes — iterate each
+                prefixes = [p.strip() for p in self.alarm_prefix.split(",") if p.strip()]
+            else:
+                prefixes = [""]  # empty string = no prefix filter
+
+            seen: set[str] = set()
+            metric_alarms: list[dict] = []
+            composite_alarms: list[dict] = []
+
+            for pfx in prefixes:
+                kw = dict(page_kwargs)
+                if pfx:
+                    kw["AlarmNamePrefix"] = pfx
+                for page in paginator.paginate(**kw):
+                    for a in page.get("MetricAlarms", []):
+                        if a["AlarmName"] not in seen:
+                            seen.add(a["AlarmName"])
+                            metric_alarms.append(a)
+                    for a in page.get("CompositeAlarms", []):
+                        if a["AlarmName"] not in seen:
+                            seen.add(a["AlarmName"])
+                            composite_alarms.append(a)
+
+            for alarm in metric_alarms:
+                audited.append(self._audit_metric_alarm(alarm))
+
+            for alarm in composite_alarms:
+                audited.append(self._audit_composite_alarm(alarm))
+
+        except Exception as e:
+            logger.error("Failed to audit CloudWatch alarms: %s", e)
+            raise
+
+        # Sort: issues first, then by name
+        audited.sort(key=lambda a: (len(a["issues"]) == 0, a["name"]))
+        return audited
+
+    def _audit_metric_alarm(self, a: dict) -> dict:
+        issues: list[dict] = []
+
+        # 1. No alarm actions (fires silently)
+        if not a.get("AlarmActions"):
+            issues.append({
+                "severity": "critical",
+                "code": "NO_ALARM_ACTION",
+                "message": "No notification action configured — alarm fires silently.",
+            })
+
+        # 2. No OK actions (never notified when it recovers)
+        if not a.get("OKActions"):
+            issues.append({
+                "severity": "warning",
+                "code": "NO_OK_ACTION",
+                "message": "No OK action — recovery is never notified.",
+            })
+
+        # 3. INSUFFICIENT_DATA state
+        if a.get("StateValue") == "INSUFFICIENT_DATA":
+            issues.append({
+                "severity": "warning",
+                "code": "INSUFFICIENT_DATA",
+                "message": "Alarm is in INSUFFICIENT_DATA — metric may not be reporting.",
+            })
+
+        # 4. Treat missing data as 'missing' (default) vs 'breaching'
+        treat_missing = a.get("TreatMissingData", "missing")
+        if treat_missing == "missing":
+            issues.append({
+                "severity": "info",
+                "code": "MISSING_DATA_IGNORED",
+                "message": (
+                    "TreatMissingData=missing: gaps in metric data won't trigger the alarm. "
+                    "Consider 'breaching' if missing data indicates a problem."
+                ),
+            })
+
+        # 5. Very short evaluation period (< 2 periods) — noisy
+        eval_periods = a.get("EvaluationPeriods", 1)
+        period       = a.get("Period", 60)
+        if eval_periods == 1 and period <= 60:
+            issues.append({
+                "severity": "info",
+                "code": "SINGLE_PERIOD_EVAL",
+                "message": (
+                    f"Evaluates only 1 period of {period}s — may produce noisy alerts. "
+                    "Consider EvaluationPeriods ≥ 2."
+                ),
+            })
+
+        # 6. Alarm has been in ALARM state for a long time
+        state_updated = a.get("StateUpdatedTimestamp")
+        if a.get("StateValue") == "ALARM" and state_updated:
+            try:
+                age_hours = (
+                    datetime.now(tz=timezone.utc) - state_updated
+                ).total_seconds() / 3600
+                if age_hours > 24:
+                    issues.append({
+                        "severity": "warning",
+                        "code": "STUCK_IN_ALARM",
+                        "message": f"Alarm has been ALARM for {age_hours:.0f}h — may be stale or misconfigured.",
+                    })
+            except Exception:
+                pass
+
+        return {
+            "name": a["AlarmName"],
+            "type": "metric",
+            "state": a.get("StateValue", "UNKNOWN"),
+            "description": a.get("AlarmDescription", ""),
+            "metric": {
+                "namespace": a.get("Namespace", ""),
+                "name": a.get("MetricName", ""),
+                "dimensions": [
+                    {"name": d["Name"], "value": d["Value"]}
+                    for d in a.get("Dimensions", [])
+                ],
+                "statistic": a.get("Statistic") or a.get("ExtendedStatistic", ""),
+                "period_seconds": a.get("Period"),
+                "evaluation_periods": a.get("EvaluationPeriods"),
+                "datapoints_to_alarm": a.get("DatapointsToAlarm"),
+                "threshold": a.get("Threshold"),
+                "comparison_operator": a.get("ComparisonOperator", ""),
+                "treat_missing_data": a.get("TreatMissingData", "missing"),
+                "unit": a.get("Unit", ""),
+            },
+            "actions": {
+                "alarm": a.get("AlarmActions", []),
+                "ok": a.get("OKActions", []),
+                "insufficient_data": a.get("InsufficientDataActions", []),
+            },
+            "state_updated": state_updated.isoformat() if state_updated else None,
+            "url": (
+                f"https://{self.region}.console.aws.amazon.com/cloudwatch/home"
+                f"?region={self.region}#alarmsV2:alarm/{a['AlarmName']}"
+            ),
+            "issues": issues,
+            "issues_count": len(issues),
+            "health": (
+                "critical" if any(i["severity"] == "critical" for i in issues)
+                else "warning" if any(i["severity"] == "warning" for i in issues)
+                else "info" if issues
+                else "ok"
+            ),
+        }
+
+    def _audit_composite_alarm(self, a: dict) -> dict:
+        issues: list[dict] = []
+
+        if not a.get("AlarmActions"):
+            issues.append({
+                "severity": "critical",
+                "code": "NO_ALARM_ACTION",
+                "message": "Composite alarm has no notification action — fires silently.",
+            })
+
+        if a.get("StateValue") == "INSUFFICIENT_DATA":
+            issues.append({
+                "severity": "warning",
+                "code": "INSUFFICIENT_DATA",
+                "message": "Composite alarm is in INSUFFICIENT_DATA.",
+            })
+
+        return {
+            "name": a["AlarmName"],
+            "type": "composite",
+            "state": a.get("StateValue", "UNKNOWN"),
+            "description": a.get("AlarmDescription", ""),
+            "rule": a.get("AlarmRule", ""),
+            "actions": {
+                "alarm": a.get("AlarmActions", []),
+                "ok": a.get("OKActions", []),
+                "insufficient_data": a.get("InsufficientDataActions", []),
+            },
+            "state_updated": (
+                a["StateUpdatedTimestamp"].isoformat()
+                if a.get("StateUpdatedTimestamp") else None
+            ),
+            "url": (
+                f"https://{self.region}.console.aws.amazon.com/cloudwatch/home"
+                f"?region={self.region}#alarmsV2:alarm/{a['AlarmName']}"
+            ),
+            "issues": issues,
+            "issues_count": len(issues),
+            "health": (
+                "critical" if any(i["severity"] == "critical" for i in issues)
+                else "warning" if any(i["severity"] == "warning" for i in issues)
+                else "ok"
+            ),
+        }

@@ -29,6 +29,9 @@ export const api = {
   /** Check which integrations are configured */
   sourcesStatus: () => request("/sources/status"),
 
+  /** Audit CloudWatch alarm configurations */
+  auditAlarms: () => request("/audit/alarms"),
+
   /** Health check */
   health: () => request("/health"),
 };

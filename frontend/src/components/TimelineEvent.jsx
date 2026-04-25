@@ -4,7 +4,7 @@ import { SeverityDot } from "./SeverityDot.jsx";
 import { fmtTime } from "../utils.js";
 
 export function TimelineEvent({ event, isSelected, onClick, animDelay = 0 }) {
-  const m = SOURCE_META[event.source] ?? { color: "#4a5568" };
+  const m = SOURCE_META[event.source] ?? { color: "#8896a8" };
 
   return (
     <div
@@ -19,7 +19,7 @@ export function TimelineEvent({ event, isSelected, onClick, animDelay = 0 }) {
         transition: "background 0.12s, border-color 0.12s",
         animation: `fadeUp 0.2s ease ${animDelay}s both`,
       }}
-      onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = "rgba(255,255,255,0.025)"; }}
+      onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = "rgba(0,0,0,0.035)"; }}
       onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = "transparent"; }}
     >
       {/* timestamp */}
@@ -62,7 +62,7 @@ export function TimelineEvent({ event, isSelected, onClick, animDelay = 0 }) {
               <span key={t} style={{
                 padding: "1px 6px", borderRadius: 3,
                 fontSize: 10, fontFamily: "var(--font-mono)",
-                background: "var(--border-hi)", color: "var(--muted)",
+                background: "var(--border)", color: "var(--text-dim)",
               }}>
                 #{t}
               </span>

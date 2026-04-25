@@ -7,10 +7,11 @@ export default defineConfig({
   server: {
     port: 3000,
     proxy: {
-      "/timeline": "http://localhost:8000",
-      "/analyze":  "http://localhost:8000",
-      "/sources":  "http://localhost:8000",
-      "/health":   "http://localhost:8000",
+      "/timeline": "http://localhost:8003",
+      "/analyze":  "http://localhost:8003",
+      "/sources":  "http://localhost:8003",
+      "/health":   "http://localhost:8003",
+      "/audit":    "http://localhost:8003",
     },
   },
 });

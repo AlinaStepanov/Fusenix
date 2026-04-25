@@ -1,17 +1,17 @@
 export const SOURCE_META = {
-  cloudwatch: { label: "CloudWatch",  color: "#fb923c", icon: "☁",  group: "aws" },
-  grafana:    { label: "Grafana",     color: "#f5c842", icon: "◈",  group: "observability" },
-  datadog:    { label: "Datadog",     color: "#4d9fff", icon: "⬡",  group: "observability" },
-  pagerduty:  { label: "PagerDuty",   color: "#ff4d6a", icon: "🚨", group: "alerting" },
-  github:     { label: "GitHub",      color: "#a78bfa", icon: "◉",  group: "vcs" },
-  cicd:       { label: "CI/CD",       color: "#00e5a0", icon: "⚙",  group: "deploy" },
+  cloudwatch: { label: "CloudWatch",  color: "#ea580c", icon: "☁",  group: "aws" },
+  grafana:    { label: "Grafana",     color: "#ca8a04", icon: "◈",  group: "observability" },
+  datadog:    { label: "Datadog",     color: "#2563eb", icon: "⬡",  group: "observability" },
+  pagerduty:  { label: "PagerDuty",   color: "#dc2626", icon: "🚨", group: "alerting" },
+  github:     { label: "GitHub",      color: "#7c3aed", icon: "◉",  group: "vcs" },
+  cicd:       { label: "CI/CD",       color: "#059669", icon: "⚙",  group: "deploy" },
 };
 
 export const SEVERITY = {
-  critical: { color: "#ff4d6a", label: "CRIT" },
-  warning:  { color: "#f5c842", label: "WARN" },
-  info:     { color: "#4d9fff", label: "INFO" },
-  success:  { color: "#00e5a0", label: "OK"   },
+  critical: { color: "#dc2626", label: "CRIT" },
+  warning:  { color: "#b45309", label: "WARN" },
+  info:     { color: "#2563eb", label: "INFO" },
+  success:  { color: "#059669", label: "OK"   },
 };
 
 export const ALL_SOURCES = Object.keys(SOURCE_META);
