@@ -2,7 +2,7 @@
 
 **Unified incident context — one screen for everything that happened.**
 
-When something breaks in production, the context is scattered: alarms firing in CloudWatch, a suspicious deploy in GitHub, CI going red, metrics spiking. OpsBridge pulls all of it into a single chronological timeline so you can see *what happened in what order* — without switching between six tabs.
+When something breaks in production, the context is scattered: alarms firing in CloudWatch, a monitor triggering in Datadog, an incident in PagerDuty, a suspicious deploy on GitHub, Grafana alerts going off. Fusenix pulls it all into a single chronological timeline so you can see *what happened in what order* — without switching between six tabs.
 
 ```
 14:23  ◉ github      Deploy → production: v2.4.1 [SUCCESS]
@@ -31,7 +31,7 @@ You only need credentials for the sources you use — everything else is gracefu
 
 ## Why not just use Datadog / Grafana / PagerDuty?
 
-Those tools are great but they each show their own slice. Datadog doesn't know about your GitHub deploys. PagerDuty doesn't show your log errors. Grafana doesn't know a revert commit just landed. OpsBridge is **read-only and source-agnostic** — it doesn't replace your existing stack, it just aggregates the timeline across all of it.
+Those tools show their own slice. Datadog doesn't know about your GitHub deploys. PagerDuty doesn't show your log errors. Grafana doesn't know a revert commit just landed. Fusenix is **read-only and source-agnostic** — it doesn't replace your existing stack, it aggregates the timeline across all of it.
 
 Self-hosted, free, and takes about 5 minutes to configure.
 
@@ -87,13 +87,23 @@ CW_ALARM_PREFIX=prod-    # optional: filter alarms by name prefix (leave blank f
 # ── GitHub ────────────────────────────────────────────────────────────────────
 # Personal access token — needs scopes: repo, read:org, workflow
 GITHUB_TOKEN=ghp_...
-GITHUB_REPOS=myorg/api,myorg/frontend
+GITHUB_REPOS=myorg/api,myorg/frontend   # comma-separated owner/repo pairs
 
-# CORS (defaults to localhost dev origins if unset)
-ALLOWED_ORIGINS=https://opsbridge.example.com
+# ── Grafana ───────────────────────────────────────────────────────────────────
+# Works with self-hosted AND Grafana Cloud (see Grafana section below)
+GRAFANA_URL=https://grafana.mycompany.com      # or https://yourorg.grafana.net
+GRAFANA_API_KEY=glsa_...                       # service-account token with Viewer role
+GRAFANA_ORG_ID=1                               # optional, defaults to org 1
+
+# ── PagerDuty ─────────────────────────────────────────────────────────────────
+PAGERDUTY_API_KEY=...                          # read-only REST API key
+PAGERDUTY_SERVICE_IDS=P1A2B3,P4D5E6F          # optional: filter to specific services
+
+# ── Datadog ───────────────────────────────────────────────────────────────────
+DD_API_KEY=...
+DD_APP_KEY=...
+DD_SITE=datadoghq.com    # use datadoghq.eu for EU, us3.datadoghq.com for US3, etc.
 ```
-
-You only need credentials for the sources you actually use — everything else is gracefully skipped. The UI shows a green dot next to each configured source.
 
 ### AI provider
 
