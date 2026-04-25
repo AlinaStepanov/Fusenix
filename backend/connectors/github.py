@@ -17,7 +17,7 @@ from typing import Optional
 
 import httpx
 
-logger = logging.getLogger("opsbridge.github")
+logger = logging.getLogger("fusenix.github")
 
 GH_API       = "https://api.github.com"
 HEADERS_BASE = {

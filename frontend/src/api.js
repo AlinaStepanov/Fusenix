@@ -29,8 +29,11 @@ export const api = {
   /** Check which integrations are configured */
   sourcesStatus: () => request("/sources/status"),
 
-  /** Audit CloudWatch alarm configurations */
+  /** Audit CloudWatch alarm configurations (CloudWatch only — legacy) */
   auditAlarms: () => request("/audit/alarms"),
+
+  /** Unified multi-source configuration audit */
+  auditAll: () => request("/audit"),
 
   /** Health check */
   health: () => request("/health"),
