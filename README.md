@@ -36,6 +36,8 @@ Those tools show their own slice. Datadog doesn't know about your GitHub deploys
 Self-hosted, free, and takes about 5 minutes to configure.
 
 ---
+<details>
+<summary>Quick Start</summary>
 
 ## Quick start
 
@@ -66,13 +68,15 @@ docker compose up --build
 
 Docker spins up two containers: the FastAPI backend (internal only, port 8000) and an nginx container that serves the built React app and proxies `/timeline`, `/analyze`, `/health`, `/audit`, `/sources` to the backend. The backend is never directly exposed to the host.
 
+</details>
+
 ---
+<details>
+<summary>Configuration</summary> 
 
 ## Configuration
 
 All configuration lives in a **single `.env` file at the repo root**. Copy `.env.example` to get started — every variable is documented there.
-
-> **Note:** There is also a `backend/.env.example` in the repo, but it is an older, incomplete copy. Use the **root `.env.example`** as the canonical reference. The backend loads from the root `.env` automatically (via `python-dotenv`).
 
 ### Data sources
 
@@ -168,7 +172,11 @@ What Fusenix fetches from Grafana:
 - **Active Alertmanager alerts** — currently firing rules from the Unified Alerting API
 - **Config Audit** — paused rules, rules missing runbook/description annotations, rules without routing labels
 
+</details>
+
 ---
+<details>
+<summary>Features</summary>
 
 ## Features
 
@@ -209,8 +217,11 @@ Click the ☀/☾ toggle in the header to switch themes. Preference is saved aut
 
 ### Export
 Export the current filtered timeline as JSON for post-incident review or ingestion into other tools.
+</details>
 
 ---
+<details>
+<summary> API reference</summary>
 
 ## API reference
 
@@ -399,7 +410,13 @@ CloudWatch-only alarm audit. Returns the same alarm data as the `cloudwatch` key
 
 Rate limit violations return HTTP `429`. The key is the client IP address.
 
+</details>
+
 ---
+
+<details>
+
+<summary> Architecture </summary>
 
 ## Architecture
 
@@ -465,7 +482,11 @@ Then register it in `backend/main.py`: add a factory function, add it to the `ta
 
 Implement the `AIProvider` ABC (see `AnthropicProvider` for a non-OpenAI-compatible example) and add a branch in `get_ai_provider()`. If your provider exposes a standard OpenAI chat-completions endpoint, just add entries to `BASE_URLS` and `DEFAULT_MODELS` — no new class needed.
 
+</details>
+
 ---
+<details>
+<summary>Contributing</summary>
 
 ## Contributing
 
@@ -473,11 +494,26 @@ PRs welcome. If you're adding a connector or AI provider, open an issue first to
 - The connector file with both `fetch()` and `audit()` methods
 - `.env.example` additions with inline documentation
 - `constants.js` entry for the source badge
+</details>
+
+---
+
+<details>
+<summary>Security</summary>
 
 ## Security
 
 See `SECURITY.md` for the vulnerability disclosure process. Key points: never commit your `.env` (it's gitignored), use read-only API credentials wherever possible, and run behind a VPN or auth proxy if Fusenix is deployed on an internal network.
 
+</details>
+
+---
+
+<details>
+<summary>License</summary>
+
 ## License
 
-MIT
+This project is open source and available under the [MIT License](./LICENSE).
+
+</details>
