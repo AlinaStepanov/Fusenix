@@ -10,7 +10,7 @@ import json
 import asyncio
 import logging
 from abc import ABC, abstractmethod
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import FastAPI, HTTPException, Query, Request
@@ -406,7 +406,7 @@ async def health():
     provider_name = os.environ.get("AI_PROVIDER", "openrouter")
     return {
         "status": "ok",
-        "time": datetime.utcnow().isoformat(),
+        "time": datetime.now(timezone.utc).isoformat(),
         "ai_provider": provider_name,
     }
 

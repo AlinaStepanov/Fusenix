@@ -1,7 +1,14 @@
 export function fmtTime(iso) {
   return new Date(iso).toLocaleTimeString("en-US", {
-    hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit",
+    hour12: true, hour: "2-digit", minute: "2-digit", second: "2-digit",
   });
+}
+
+export function fmtTimeUTC(iso) {
+  return new Date(iso).toLocaleTimeString("en-US", {
+    hour12: false, hour: "2-digit", minute: "2-digit",
+    timeZone: "UTC",
+  }) + " UTC";
 }
 
 export function fmtDate(iso) {
@@ -13,7 +20,7 @@ export function fmtDate(iso) {
 export function fmtDatetime(iso) {
   return new Date(iso).toLocaleString("en-US", {
     month: "short", day: "numeric",
-    hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
+    hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true,
   });
 }
 

@@ -1,7 +1,7 @@
 import { SOURCE_META } from "../constants.js";
 import { SourceBadge } from "./SourceBadge.jsx";
 import { SeverityDot } from "./SeverityDot.jsx";
-import { fmtTime } from "../utils.js";
+import { fmtTime, fmtTimeUTC } from "../utils.js";
 
 export function TimelineEvent({ event, isSelected, onClick, animDelay = 0 }) {
   const m = SOURCE_META[event.source] ?? { color: "#8896a8" };
@@ -29,6 +29,9 @@ export function TimelineEvent({ event, isSelected, onClick, animDelay = 0 }) {
         color: "var(--muted)", paddingTop: 3, lineHeight: 1.3,
       }}>
         {fmtTime(event.time)}
+        <div style={{ fontSize: 9, color: "var(--muted)", opacity: 0.65, marginTop: 2 }}>
+          {fmtTimeUTC(event.time)}
+        </div>
       </div>
 
       {/* severity dot */}
