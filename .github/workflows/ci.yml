@@ -31,7 +31,7 @@ jobs:
       - name: Install dependencies
         run: pip install -r backend/requirements.txt -r backend/requirements-test.txt
       - name: Run tests
-        run: pytest backend/tests/ -v -p no:cacheprovider
+        run: pytest tests/ -v -p no:cacheprovider
         working-directory: backend
 
   build-frontend:

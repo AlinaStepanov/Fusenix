@@ -10,7 +10,6 @@ from fastapi import HTTPException
 
 from main import (
     get_ai_provider,
-    AIProvider,
     AnthropicProvider,
     AzureOpenAIProvider,
     OpenAICompatibleProvider,

@@ -9,7 +9,6 @@ Covers:
 import json
 from unittest.mock import patch
 
-import pytest
 
 from tests.helpers import FakeAIProvider
 
