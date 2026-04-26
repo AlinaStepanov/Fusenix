@@ -13,8 +13,6 @@ Optional:
 import hashlib
 import logging
 from datetime import datetime, timezone
-from typing import Optional
-
 import httpx
 
 logger = logging.getLogger("fusenix.datadog")
@@ -192,7 +190,6 @@ async def audit(self) -> dict:
             r = await client.get(f"{self.base_url}/api/v1/downtime", params={"currentOnly": "true"})
             if r.status_code == 200:
                 for dt in r.json():
-                    scope = dt.get("scope", [])
                     monitor_id = dt.get("monitor_id")
                     if monitor_id:
                         muted_monitor_ids.add(monitor_id)

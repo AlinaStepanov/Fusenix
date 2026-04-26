@@ -140,7 +140,10 @@ class CloudWatchConnector:
 
     def _alarm_severity(self, item: dict) -> str:
         summary = item.get("HistorySummary", "").lower()
-        if "alarm" in summary and "ok" not in summary:
+        # Match "to alarm" specifically — the summary contains both source and
+        # destination states (e.g. "from OK to ALARM"), so checking for the
+        # absence of "ok" is not sufficient.
+        if " to alarm" in summary or summary.endswith("alarm"):
             return "critical"
         if "insufficient" in summary:
             return "warning"

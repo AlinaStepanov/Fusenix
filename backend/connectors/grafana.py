@@ -172,130 +172,119 @@ class GrafanaConnector:
         return events
 
 
-# ── Configuration audit ───────────────────────────────────────────────────────
+    # ── Configuration audit ───────────────────────────────────────────────────────
 
-async def audit(self) -> dict:
-    """
-    Audit Grafana alert-rule configuration for common misconfigurations.
-    Returns a dict matching the per-source shape used by /audit.
-    """
-    items = []
-    summary = {"total": 0, "ok": 0, "warning": 0, "critical": 0, "info": 0}
+    async def audit(self) -> dict:
+        """
+        Audit Grafana alert-rule configuration for common misconfigurations.
+        Returns a dict matching the per-source shape used by /audit.
+        """
+        items = []
+        summary = {"total": 0, "ok": 0, "warning": 0, "critical": 0, "info": 0}
 
-    if not self.url or not self.api_key:
-        return {"configured": False, "items": [], "summary": summary}
+        if not self.url or not self.api_key:
+            return {"configured": False, "items": [], "summary": summary}
 
-    async with httpx.AsyncClient(
-        headers=self._headers(), timeout=30, follow_redirects=True
-    ) as client:
+        async with httpx.AsyncClient(
+            headers=self._headers(), timeout=30, follow_redirects=True
+        ) as client:
 
-        # Fetch contact points so we can cross-reference
-        contact_points: list = []
-        try:
-            r = await client.get(f"{self.url}/api/v1/provisioning/contact-points")
-            if r.status_code == 200:
-                contact_points = r.json()
-        except Exception as exc:
-            logger.warning("Grafana contact-points fetch failed: %s", exc)
+            # Fetch notification policy tree
+            default_receiver = ""
+            try:
+                r = await client.get(f"{self.url}/api/v1/provisioning/policies")
+                if r.status_code == 200:
+                    policy = r.json()
+                    default_receiver = policy.get("receiver", "")
+            except Exception as exc:
+                logger.warning("Grafana policies fetch failed: %s", exc)
 
-        cp_names = {cp.get("name", "") for cp in contact_points}
+            # Fetch all alert rules
+            rules: list = []
+            try:
+                r = await client.get(f"{self.url}/api/v1/provisioning/alert-rules")
+                if r.status_code == 200:
+                    rules = r.json()
+                elif r.status_code == 404:
+                    # Older Grafana — try legacy endpoint
+                    r2 = await client.get(f"{self.url}/api/ruler/grafana/api/v1/rules")
+                    if r2.status_code == 200:
+                        for ns_rules in r2.json().values():
+                            for group in ns_rules:
+                                rules.extend(group.get("rules", []))
+            except Exception as exc:
+                logger.warning("Grafana alert-rules fetch failed: %s", exc)
 
-        # Fetch notification policy tree
-        default_receiver = ""
-        try:
-            r = await client.get(f"{self.url}/api/v1/provisioning/policies")
-            if r.status_code == 200:
-                policy = r.json()
-                default_receiver = policy.get("receiver", "")
-        except Exception as exc:
-            logger.warning("Grafana policies fetch failed: %s", exc)
+            for rule in rules:
+                uid = rule.get("uid", rule.get("id", ""))
+                title = rule.get("title", "Unnamed rule")
+                is_paused = rule.get("isPaused", False)
+                annotations = rule.get("annotations", {})
+                labels = rule.get("labels", {})
 
-        # Fetch all alert rules
-        rules: list = []
-        try:
-            r = await client.get(f"{self.url}/api/v1/provisioning/alert-rules")
-            if r.status_code == 200:
-                rules = r.json()
-            elif r.status_code == 404:
-                # Older Grafana — try legacy endpoint
-                r2 = await client.get(f"{self.url}/api/ruler/grafana/api/v1/rules")
-                if r2.status_code == 200:
-                    for ns_rules in r2.json().values():
-                        for group in ns_rules:
-                            rules.extend(group.get("rules", []))
-        except Exception as exc:
-            logger.warning("Grafana alert-rules fetch failed: %s", exc)
+                # Check: rule is paused/disabled
+                if is_paused:
+                    items.append({
+                        "name": title,
+                        "uid": uid,
+                        "health": "warning",
+                        "issues_count": 1,
+                        "issues": [{
+                            "code": "RULE_PAUSED",
+                            "severity": "warning",
+                            "message": "Alert rule is paused and will not fire",
+                        }],
+                        "url": f"{self.url}/alerting/{uid}/edit" if uid else None,
+                    })
+                    continue
 
-        for rule in rules:
-            uid = rule.get("uid", rule.get("id", ""))
-            title = rule.get("title", "Unnamed rule")
-            is_paused = rule.get("isPaused", False)
-            annotations = rule.get("annotations", {})
-            labels = rule.get("labels", {})
+                issues = []
 
-            # Check: rule is paused/disabled
-            if is_paused:
+                # Check: no notification policy routing (no labels to match on)
+                if not labels and not default_receiver:
+                    issues.append({
+                        "code": "NO_ROUTING",
+                        "severity": "critical",
+                        "message": "Rule has no labels and no default notification policy receiver",
+                    })
+
+                # Check: missing runbook annotation
+                if not annotations.get("runbook_url") and not annotations.get("runbook"):
+                    issues.append({
+                        "code": "NO_RUNBOOK",
+                        "severity": "info",
+                        "message": "No runbook URL annotation — responders have no documented response procedure",
+                    })
+
+                # Check: missing summary/description
+                if not annotations.get("summary") and not annotations.get("description"):
+                    issues.append({
+                        "code": "NO_DESCRIPTION",
+                        "severity": "info",
+                        "message": "No summary or description annotation — alert messages will be cryptic",
+                    })
+
+                health = "ok"
+                if any(i["severity"] == "critical" for i in issues):
+                    health = "critical"
+                elif any(i["severity"] == "warning" for i in issues):
+                    health = "warning"
+                elif issues:
+                    health = "info"
+
                 items.append({
                     "name": title,
                     "uid": uid,
-                    "health": "warning",
-                    "issues_count": 1,
-                    "issues": [{
-                        "code": "RULE_PAUSED",
-                        "severity": "warning",
-                        "message": "Alert rule is paused and will not fire",
-                    }],
+                    "health": health,
+                    "issues_count": len(issues),
+                    "issues": issues,
+                    "folder": rule.get("folderUID", ""),
                     "url": f"{self.url}/alerting/{uid}/edit" if uid else None,
                 })
-                continue
 
-            issues = []
+        for item in items:
+            summary["total"] += 1
+            h = item["health"]
+            summary[h] = summary.get(h, 0) + 1
 
-            # Check: no notification policy routing (no labels to match on)
-            if not labels and not default_receiver:
-                issues.append({
-                    "code": "NO_ROUTING",
-                    "severity": "critical",
-                    "message": "Rule has no labels and no default notification policy receiver",
-                })
-
-            # Check: missing runbook annotation
-            if not annotations.get("runbook_url") and not annotations.get("runbook"):
-                issues.append({
-                    "code": "NO_RUNBOOK",
-                    "severity": "info",
-                    "message": "No runbook URL annotation — responders have no documented response procedure",
-                })
-
-            # Check: missing summary/description
-            if not annotations.get("summary") and not annotations.get("description"):
-                issues.append({
-                    "code": "NO_DESCRIPTION",
-                    "severity": "info",
-                    "message": "No summary or description annotation — alert messages will be cryptic",
-                })
-
-            health = "ok"
-            if any(i["severity"] == "critical" for i in issues):
-                health = "critical"
-            elif any(i["severity"] == "warning" for i in issues):
-                health = "warning"
-            elif issues:
-                health = "info"
-
-            items.append({
-                "name": title,
-                "uid": uid,
-                "health": health,
-                "issues_count": len(issues),
-                "issues": issues,
-                "folder": rule.get("folderUID", ""),
-                "url": f"{self.url}/alerting/{uid}/edit" if uid else None,
-            })
-
-    for item in items:
-        summary["total"] += 1
-        h = item["health"]
-        summary[h] = summary.get(h, 0) + 1
-
-    return {"configured": True, "items": items, "summary": summary}
+        return {"configured": True, "items": items, "summary": summary}

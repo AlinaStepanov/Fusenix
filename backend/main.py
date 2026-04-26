@@ -19,6 +19,14 @@ from pydantic import BaseModel
 import httpx
 
 from pathlib import Path
+from connectors.cloudwatch import CloudWatchConnector
+from connectors.github import GitHubConnector
+from connectors.grafana import GrafanaConnector
+from connectors.pagerduty import PagerDutyConnector
+from connectors.datadog import DatadogConnector
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 try:
     from dotenv import load_dotenv
@@ -34,16 +42,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger("fusenix")
 
-from connectors.cloudwatch import CloudWatchConnector
-from connectors.github import GitHubConnector
-from connectors.grafana import GrafanaConnector
-from connectors.pagerduty import PagerDutyConnector
-from connectors.datadog import DatadogConnector
-
-# ── Rate limiting ─────────────────────────────────────────────────────────────
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
-from slowapi.errors import RateLimitExceeded
 
 limiter = Limiter(key_func=get_remote_address, default_limits=["60/minute"])
 
