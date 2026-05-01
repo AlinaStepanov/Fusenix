@@ -1,0 +1,142 @@
+# ══════════════════════════════════════════════════════════════════════════════
+# Fusenix — Service Map configuration
+# ══════════════════════════════════════════════════════════════════════════════
+# Place this file at the repo root (alongside docker-compose.yml).
+# Every service listed here will appear in the Service Map tab with live health
+# data pulled from CloudWatch, Grafana, GitHub, and/or PagerDuty.
+#
+# REQUIRED per service : id, name
+# OPTIONAL per service : team, runtime, env, icon, cloudwatch, grafana, github,
+#                        pagerduty
+# ──────────────────────────────────────────────────────────────────────────────
+
+# ── Teams ─────────────────────────────────────────────────────────────────────
+# Referenced by services via their `team` field.
+teams:
+  - id: backend
+    name: Backend
+    color: "#60a5fa"
+    emoji: "⚡"
+  - id: data
+    name: Data Eng
+    color: "#a78bfa"
+    emoji: "◈"
+  - id: payments
+    name: Payments
+    color: "#10b981"
+    emoji: "💳"
+  - id: infra
+    name: Infra
+    color: "#fb923c"
+    emoji: "⬡"
+  - id: frontend
+    name: Frontend
+    color: "#f472b6"
+    emoji: "⊞"
+
+# ── Services ──────────────────────────────────────────────────────────────────
+services:
+
+  # ── Example: EKS service monitored via CloudWatch + PagerDuty + GitHub ──────
+  - id: backend-prod
+    name: backend-prod
+    team: backend
+    runtime: Lambda       # EKS | ECS | Lambda | RDS | EC2 | K8s | Generic
+    env: production
+    icon: "⚡"
+    cloudwatch:
+      # Filter CloudWatch alarms by prefix. Leave empty to skip.
+      alarm_prefix: "prod-backend-"
+      # Optional: drive the spark mini-chart with a specific metric.
+      # spark_metric:
+      #   namespace: AWS/ApplicationELB
+      #   metric: RequestCount
+      #   dimensions:
+      #     LoadBalancer: "app/my-alb/abc123"
+      #   stat: Sum
+    github:
+      repo: ""              # fill in: owner/repo  e.g. myorg/backend
+    pagerduty:
+      service_id: ""        # fill in: PagerDuty service ID  e.g. PABC123
+
+  # ── Example: EKS data pipeline monitored via CloudWatch + Grafana ────────────
+  - id: data-pipeline
+    name: data-pipeline
+    team: data
+    runtime: EKS
+    env: production
+    icon: "◈"
+    cloudwatch:
+      alarm_prefix: "prod-data-"
+    grafana:
+      dashboard_uid: ""     # fill in: Grafana dashboard UID for deep-link
+    github:
+      repo: ""              # fill in: owner/repo
+
+  # ── Example: ECS service ─────────────────────────────────────────────────────
+  - id: payments-svc
+    name: payments-svc
+    team: payments
+    runtime: ECS
+    env: production
+    icon: "💳"
+    cloudwatch:
+      alarm_prefix: "prod-payments-"
+    pagerduty:
+      service_id: ""
+
+  # ── Example: Auth service ────────────────────────────────────────────────────
+  - id: auth-service
+    name: auth-service
+    team: backend
+    runtime: EKS
+    env: production
+    icon: "🔑"
+    cloudwatch:
+      alarm_prefix: "prod-"
+
+  # ── Example: CDN / EC2 ───────────────────────────────────────────────────────
+  - id: cdn-edge
+    name: cdn-edge
+    team: infra
+    runtime: EC2
+    env: production
+    icon: "🌐"
+    cloudwatch:
+      alarm_prefix: "prod-cdn-"
+
+  # ── Example: Lambda function ─────────────────────────────────────────────────
+  - id: notifications-lambda
+    name: notifications-fn
+    team: backend
+    runtime: Lambda
+    env: production
+    icon: "λ"
+    cloudwatch:
+      alarm_prefix: "prod-notifications-"
+    github:
+      repo: ""
+
+  # ── Example: Staging environment ─────────────────────────────────────────────
+  - id: backend-stage
+    name: backend-stage
+    team: backend
+    runtime: EKS
+    env: staging
+    icon: "⚡"
+    cloudwatch:
+      alarm_prefix: "stage-backend-"
+    grafana:
+      dashboard_uid: ""
+    github:
+      repo: ""
+
+  # ── Example: RDS database ────────────────────────────────────────────────────
+  - id: analytics-rds
+    name: analytics-rds
+    team: data
+    runtime: RDS
+    env: staging
+    icon: "🗄"
+    cloudwatch:
+      alarm_prefix: "stage-analytics-rds-"

@@ -1,0 +1,90 @@
+name: Bug report
+description: Something isn't working as expected
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please redact credentials, internal hostnames, and any sensitive data before submitting.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: A clear description of the bug.
+      placeholder: "When I click AI Analysis with Datadog events in the timeline, the response is always empty."
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Configure Datadog integration
+        2. Load a 4h timeline window
+        3. Click AI Analysis
+        4. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+      placeholder: AI analysis should return root cause and next steps.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: deployment
+    attributes:
+      label: How are you running Fusenix?
+      options:
+        - Docker (docker compose up)
+        - Local (uvicorn + npm run dev)
+    validations:
+      required: true
+
+  - type: input
+    id: python
+    attributes:
+      label: Python version
+      placeholder: "3.11.9"
+
+  - type: input
+    id: node
+    attributes:
+      label: Node version
+      placeholder: "20.12.0"
+
+  - type: input
+    id: os
+    attributes:
+      label: OS
+      placeholder: "macOS 14.4 / Ubuntu 22.04"
+
+  - type: checkboxes
+    id: sources
+    attributes:
+      label: Configured sources
+      description: Which integrations are active in your .env?
+      options:
+        - label: AWS CloudWatch
+        - label: GitHub
+        - label: Grafana
+        - label: PagerDuty
+        - label: Datadog
+
+  - type: input
+    id: ai_provider
+    attributes:
+      label: AI provider (AI_PROVIDER value)
+      placeholder: "openrouter / anthropic / ollama / ..."
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs or error output
+      description: Backend logs, browser console errors, network responses. Redact credentials and hostnames.
+      render: shell

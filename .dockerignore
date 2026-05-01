@@ -1,0 +1,32 @@
+# Dependencies — never copy these, let npm ci / pip install rebuild them
+node_modules
+**/node_modules
+
+# Python cache
+**/__pycache__
+**/*.pyc
+**/*.pyo
+.pytest_cache
+
+# Git
+.git
+.gitignore
+
+# Dev / local files
+.env
+*.env.local
+backend/.env
+
+# Vite build artifacts (rebuilt in container)
+frontend/dist
+dist
+
+# Editor artifacts
+.DS_Store
+*.swp
+*.swo
+.idea
+.vscode
+
+# Logs
+*.log
